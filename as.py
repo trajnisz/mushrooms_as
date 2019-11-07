@@ -47,10 +47,15 @@ df = data_without_missing_column
 # --------------------------feature selection-----------------------------
 # encode categorical variable
 labelencoder = LabelEncoder()
+mapping_dict = {}
 for column in df.columns:
     df[column] = labelencoder.fit_transform(df[column])
+    mapping_dict[column] = dict(zip(labelencoder.classes_, range(len(labelencoder.classes_))))
+
 
 print(df.describe())
+print("---------mapping-------------")
+print(mapping_dict)
 # column has the same value in all records
 df = df.drop(["veil-type"], axis=1)
 
@@ -60,7 +65,7 @@ fig, ax = plt.subplots(figsize=(10, 5))
 p = sns.violinplot(ax=ax, x="Characteristics", y="value", hue="class", split=True, data=df_div, inner='quartile',
                    palette='Set1')
 df_no_class = df.drop(["class"], axis=1)
-p.set_xticklabels(rotation=90, labels=list(df_no_class.columns));
+p.set_xticklabels(rotation=90, labels=list(df_no_class.columns))
 
 # edible/poisonous plot
 pd.Series(df['class']).value_counts().sort_index().plot(kind='bar')
@@ -74,7 +79,7 @@ sns.heatmap(df.corr(), linewidths=.1, cmap="YlGnBu", annot=True)
 plt.yticks(rotation=0);
 
 # least correlated is gill-color
-df[['class', 'gill-color']].groupby(['gill-color'], as_index=False).mean().sort_values(by='class', ascending=False)
+print(df[['class', 'gill-color']].groupby(['gill-color'], as_index=False).mean().sort_values(by='class', ascending=False))
 
 # analysis on gill-color
 new_var=df[['class', 'gill-color']]
@@ -100,7 +105,7 @@ dot_data = export_graphviz(clf, out_file=None,
                          filled=True, rounded=True,
                          special_characters=True)
 graph = graphviz.Source(dot_data)
-graph
+graph.render()
 
 
 # feature importance
