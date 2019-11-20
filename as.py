@@ -219,16 +219,31 @@ column_names = ['class',
                 'habitat']
 # data = pd.read_csv('data-translated.csv', delimiter=";")
 
+
+
+#-------------------------------------------------------------------settings-----------------------------------------------------------
+printAll = True
+originalData = True
+#------------------------------------------------------------------------------------------------------------------------------
 data = pd.read_csv('agaricus-lepiota.data', header=None, names=column_names)
 
-print(data.head(5))
+if printAll:
+    print(data.head(5))
 data_without_missing_column = data.drop(columns=['stalk-root'])
 del values_dict['stalk-root']
-print(data_without_missing_column.head(5))
 
+if printAll:
+    print(data_without_missing_column.head(5))
+
+
+
+
+# -------------------------------------------------------------------------------------------------------
 # can be changed between original/without_missing
-df = data_without_missing_column
-# df = data
+if originalData:
+    df = data_without_missing_column
+else:
+    df = data.replace('?', np.nan).dropna()
 
 # --------------------------feature selection-----------------------------
 # encode categorical variable
@@ -237,9 +252,9 @@ mapping_dict = {}
 for column in df.columns:
     df[column] = labelencoder.fit_transform(df[column])
     mapping_dict[column] = dict(zip(labelencoder.classes_, range(len(labelencoder.classes_))))
-
-print(df.describe())
-print("---------mapping-------------")
+if printAll:
+    print(df.describe())
+    print("---------mapping-------------")
 # print(json.dumps(mapping_dict, indent=2))
 
 
@@ -249,69 +264,102 @@ for col_name in values_dict:
     for key in mapping_dict[col_name]:
         final_dict[col_name][mapping_dict[col_name][key]] = values_dict[col_name][key]
 
-print("--------- final mapping-------------")
-print(json.dumps(final_dict, indent=2))
+if printAll:
+    print("--------- final mapping-------------")
+    print(json.dumps(final_dict, indent=2))
 
     # column has the same value in all records
 df = df.drop(["veil-type"], axis=1)
 
 # characteristics
-df_div = pd.melt(df, "class", var_name="Characteristics")
-fig, ax = plt.subplots(figsize=(10, 5))
-p = sns.violinplot(ax=ax, x="Characteristics", y="value", hue="class", split=True, data=df_div, inner='quartile',
-                   palette='Set1')
-df_no_class = df.drop(["class"], axis=1)
-p.set_xticklabels(rotation=90, labels=list(df_no_class.columns))
+if printAll:
+    df_div = pd.melt(df, "class", var_name="Characteristics")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    p = sns.violinplot(ax=ax, x="Characteristics", y="value", hue="class", split=True, data=df_div, inner='quartile',
+                       palette='Set1')
+    df_no_class = df.drop(["class"], axis=1)
+    p.set_xticklabels(rotation=90, labels=list(df_no_class.columns))
+    plt.show()
 
 # edible/poisonous plot
-pd.Series(df['class']).value_counts().sort_index().plot(kind='bar')
-plt.ylabel("Count")
-plt.xlabel("class")
-plt.title('Number of poisonous/edible mushrooms (0=edible, 1=poisonous)');
+if printAll:
+    pd.Series(df['class']).value_counts().sort_index().plot(kind='bar')
+    plt.ylabel("Count")
+    plt.xlabel("class")
+    plt.title('Number of poisonous/edible mushrooms (0=edible, 1=poisonous)');
 
 # correlation
-plt.figure(figsize=(14, 12))
-sns.heatmap(df.corr(), linewidths=.1, cmap="YlGnBu", annot=True)
-plt.yticks(rotation=0);
+if printAll:
+    plt.figure(figsize=(14, 12))
+    sns.heatmap(df.corr(), linewidths=.1, cmap="YlGnBu", annot=True)
+    plt.yticks(rotation=0)
+    plt.show()
+
+# -------------------------------------------least_corr---------------------------------
+if originalData:
+    least_corr = 'gill-color'
+    tres = 3.5
+else:
+    least_corr = 'stalk-shape'
+    tres = 0.5
+# ----------------------------------------------------------------------------
 
 # least correlated is gill-color
-print(
-    df[['class', 'gill-color']].groupby(['gill-color'], as_index=False).mean().sort_values(by='class', ascending=False))
+if printAll:
+    print(
+      df[['class', least_corr]].groupby([least_corr], as_index=False).mean().sort_values(by='class', ascending=False))
 
-# analysis on gill-color
-new_var = df[['class', 'gill-color']]
-new_var = new_var[new_var['gill-color'] <= 3.5]
-sns.factorplot('class', col='gill-color', data=new_var, kind='count', size=2.5, aspect=.8, col_wrap=4);
+# analysis on least_corr
+if printAll:
+    new_var = df[['class', least_corr]]
+    new_var = new_var[new_var[least_corr] <= tres]
+    sns.factorplot('class', col=least_corr, data=new_var, kind='count', size=2.5, aspect=.8, col_wrap=4)
+    plt.show()
 
-new_var = df[['class', 'gill-color']]
-new_var = new_var[new_var['gill-color'] > 3.5]
-sns.factorplot('class', col='gill-color', data=new_var, kind='count', size=2.5, aspect=.8, col_wrap=4);
+    new_var = df[['class', least_corr]]
+    new_var = new_var[new_var[least_corr] > tres]
+    sns.factorplot('class', col=least_corr, data=new_var, kind='count', size=2.5, aspect=.8, col_wrap=4)
+    plt.show()
 
 # building model
 X = df.drop(['class'], axis=1)
 Y = df['class']
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.1)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 # Decision tree classifier
 clf = DecisionTreeClassifier()
 clf = clf.fit(X_train, Y_train)
-
-dot_data = export_graphviz(clf, out_file=None,
-                           feature_names=X.columns,
-                           filled=True, rounded=True,
-                           special_characters=True)
-graph = graphviz.Source(dot_data)
-graph.render()
+if printAll:
+    dot_data = export_graphviz(clf, out_file=None,
+                               feature_names=X.columns,
+                               filled=True, rounded=True,
+                               special_characters=True)
+    graph = graphviz.Source(dot_data)
+    graph.render()
 
 # feature importance
 features_list = X.columns.values
 feature_importance = clf.feature_importances_
 sorted_idx = np.argsort(feature_importance)
+if printAll:
+    plt.figure(figsize=(5, 7))
+    plt.barh(range(len(sorted_idx)), feature_importance[sorted_idx], align='center')
+    plt.yticks(range(len(sorted_idx)), features_list[sorted_idx])
+    plt.xlabel('Importance')
+    plt.title('Feature importance')
+    plt.draw()
+    plt.show()
 
-plt.figure(figsize=(5, 7))
-plt.barh(range(len(sorted_idx)), feature_importance[sorted_idx], align='center')
-plt.yticks(range(len(sorted_idx)), features_list[sorted_idx])
-plt.xlabel('Importance')
-plt.title('Feature importance')
-plt.draw()
+
+ #--------------predictions--------------
+y_pred = clf.predict(X_test)
+print('Decision Tree Classifier report')
+print(classification_report(Y_test, y_pred))
+
+cfm=confusion_matrix(Y_test, y_pred)
+
+sns.heatmap(cfm, annot=True,  linewidths=.5, cbar=None)
+plt.title('Decision Tree Classifier confusion matrix')
+plt.ylabel('True label')
+plt.xlabel('Predicted label')
 plt.show()
